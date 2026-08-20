@@ -1,0 +1,10 @@
+# Mengabaikan file API Key rahasia
+.env
+
+# Mengabaikan cache python
+__pycache__/
+*.pyc
+
+# Mengabaikan virtual environment lokal
+venv/
+env/
