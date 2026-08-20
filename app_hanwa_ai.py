@@ -188,7 +188,7 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
                     client = genai.Client(api_key=api_key)
                     
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                        model='gemini-1.5-flash',  # Diperbarui ke model yang valid
                         contents=prompt,
                     )
                     response_text = f"🌐 **[Gemini API]**: {response.text}"
