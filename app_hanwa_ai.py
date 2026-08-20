@@ -19,8 +19,7 @@ selected_model = st.sidebar.selectbox(
 
 st.sidebar.markdown("---")
 if selected_model == "API Eksternal (Gemini AI)":
-    api_key_input = st.sidebar.text_input("Masukkan Google Gemini API Key:", type="password")
-    st.sidebar.info("Dapatkan API key gratis melalui Google AI Studio untuk menggunakan model Gemini.")
+    st.sidebar.success("API Key Gemini sudah tertanam otomatis di dalam sistem.")
 else:
     st.sidebar.success("Menggunakan model neural network buatan sendiri (Hanwa AI PyTorch).")
 
@@ -172,22 +171,19 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
                 st.markdown(f"🧠 **[Hanwa AI Local]**: {response_text}")
 
         else:
-            # Bagian koneksi nyata ke Google Gemini API
+            # Bagian koneksi nyata ke Google Gemini API secara otomatis
             with st.spinner("Menghubungkan ke Gemini API..."):
-                if not api_key_input:
-                    response_text = "⚠️ Harap masukkan Google Gemini API Key Anda di sidebar sebelah kiri."
-                else:
-                    try:
-                        # Menginisialisasi client Google GenAI resmi
-                        client = genai.Client(api_key=api_key_input)
-                        # Memanggil model Gemini Flash terbaru
-                        response = client.models.generate_content(
-                            model='gemini-2.5-flash',
-                            contents=prompt,
-                        )
-                        response_text = f"🌐 **[Gemini API]**: {response.text}"
-                    except Exception as e:
-                        response_text = f"❌ Terjadi kesalahan saat menghubungi API: {e}"
+                try:
+                    # Menginisialisasi client menggunakan API Key yang langsung tertanam
+                    client = genai.Client(api_key="AQ.Ab8RN6IC_2-p8jSTMmZNN2as216-f8gwwu7wFHrFDsImZZueYw")
+                    # Memanggil model Gemini Flash terbaru
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt,
+                    )
+                    response_text = f"🌐 **[Gemini API]**: {response.text}"
+                except Exception as e:
+                    response_text = f"❌ Terjadi kesalahan saat menghubungi API: {e}"
                 
                 st.markdown(response_text)
                 
