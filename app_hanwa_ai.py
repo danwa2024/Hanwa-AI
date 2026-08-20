@@ -24,7 +24,7 @@ selected_model = st.sidebar.selectbox(
 
 st.sidebar.markdown("---")
 if selected_model == "API Eksternal (Gemini API)":
-    st.sidebar.success("API Key Gemini terhubung secara aman melalui Environment Variables.")
+    st.sidebar.success("API Key Gemini terhubung secara aman melalui Secrets/Environment.")
 else:
     st.sidebar.success("Menggunakan model neural network buatan sendiri (Hanwa AI PyTorch).")
 
@@ -176,11 +176,16 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
                 st.markdown(f"🧠 **[Hanwa AI Local]**: {response_text}")
 
         else:
-            # Bagian koneksi nyata ke Google Gemini API secara aman via environment variable
+            # Bagian koneksi aman ke Google Gemini API (Streamlit Secrets / Environment Variable)
             with st.spinner("Menghubungkan ke Gemini API..."):
                 try:
-                    api_key_env = os.environ.get("GEMINI_API_KEY")
-                    client = genai.Client(api_key=api_key_env)
+                    # Mencoba mengambil kunci dari Streamlit Secrets atau Environment Variable (.env)
+                    try:
+                        api_key = st.secrets["GEMINI_API_KEY"]
+                    except Exception:
+                        api_key = os.environ.get("GEMINI_API_KEY")
+
+                    client = genai.Client(api_key=api_key)
                     
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
