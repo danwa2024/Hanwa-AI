@@ -11,9 +11,9 @@ from groq import Groq
 load_dotenv()
 
 # --- 1. KONFIGURASI HALAMAN WEB STREAMLIT ---
-st.set_page_config(page_title="Hanwa AI Hybrid Chat", page_icon="🤖")
-st.title("🤖 Hanwa AI - Hybrid System")
-st.write("Sistem chat otonom dengan opsi pemilihan mesin model AI (Local Neural Network vs Groq API).")
+st.set_page_config(page_title="Chat Hanwa AI", page_icon="🤖")
+st.title("Hanwa AI")
+st.write("Hi, what's the move?.")
 
 # --- 2. SIDEBAR: PENGATURAN & PEMILIHAN MODEL ---
 st.sidebar.header("⚙️ Pengaturan Model")
