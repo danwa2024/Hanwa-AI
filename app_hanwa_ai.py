@@ -191,7 +191,7 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
                     client = Groq(api_key=api_key)
 
                     completion = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",  # Model gratis Groq, cepat & kuat
+                        model="openai/gpt-oss-120b",  # Model gratis Groq (pengganti llama-3.3-70b-versatile yang sudah deprecated)
                         messages=[
                             {"role": "user", "content": prompt}
                         ],
