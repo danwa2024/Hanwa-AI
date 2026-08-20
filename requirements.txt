@@ -1,3 +1,4 @@
-torch
 streamlit
+torch
 google-genai
+python-dotenv
