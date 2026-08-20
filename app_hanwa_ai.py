@@ -51,14 +51,14 @@ def precompute_rope_frequencies(dim, end, theta=10000.0):
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2).float() / dim))
     t = torch.arange(end, device=DEVICE).type_as(freqs)
     freqs = torch.outer(t, freqs)
-    return torch.polar(torch.ones_like(freqs), freqs)
+    return torch.polar(torch.ones_like(freqs), freqs).contiguous()
 
 def apply_rope(xq, xk, freqs_cis):
-    xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-    xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-    freqs_cis = freqs_cis.view(1, xq_.shape[1], 1, xq_.shape[-1])
-    xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-    xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
+    xq_ = torch.view_as_complex(xq.float().contiguous().reshape(*xq.shape[:-1], -1, 2))
+    xk_ = torch.view_as_complex(xk.float().contiguous().reshape(*xk.shape[:-1], -1, 2))
+    freqs_cis = freqs_cis.contiguous().reshape(1, xq_.shape[1], 1, xq_.shape[-1])
+    xq_out = torch.view_as_real(xq_ * freqs_cis).reshape(*xq.shape)
+    xk_out = torch.view_as_real(xk_ * freqs_cis).reshape(*xk.shape)
     return xq_out.type_as(xq), xk_out.type_as(xk)
 
 class SwiGLUMLP(nn.Module):
