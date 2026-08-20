@@ -3,13 +3,28 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from google import genai
 
 # --- 1. KONFIGURASI HALAMAN WEB STREAMLIT ---
-st.set_page_config(page_title="Hanwa AI Chat", page_icon="🤖")
-st.title("🤖 Hanwa AI Chatbot")
-st.write("Ngobrol langsung dengan model bahasa buatan Anda sendiri secara gratis.")
+st.set_page_config(page_title="Hanwa AI Hybrid Chat", page_icon="🤖")
+st.title("🤖 Hanwa AI - Hybrid System")
+st.write("Sistem chat otonom dengan opsi pemilihan mesin model AI (Local Neural Network vs Google Gemini API).")
 
-# --- 2. HIPERPARAMETER & KORPUS PELATIHAN ---
+# --- 2. SIDEBAR: PENGATURAN & PEMILIHAN MODEL ---
+st.sidebar.header("⚙️ Pengaturan Model")
+selected_model = st.sidebar.selectbox(
+    "Pilih Mesin AI:",
+    ["Hanwa AI (Local Model)", "API Eksternal (Gemini AI)"]
+)
+
+st.sidebar.markdown("---")
+if selected_model == "API Eksternal (Gemini AI)":
+    api_key_input = st.sidebar.text_input("Masukkan Google Gemini API Key:", type="password")
+    st.sidebar.info("Dapatkan API key gratis melalui Google AI Studio untuk menggunakan model Gemini.")
+else:
+    st.sidebar.success("Menggunakan model neural network buatan sendiri (Hanwa AI PyTorch).")
+
+# --- 3. ARSITEKTUR HANWA AI (LOCAL MODEL) ---
 BLOCK_SIZE = 64
 EMBED_DIM = 128
 NUM_HEADS = 8
@@ -20,9 +35,7 @@ DEVICE = 'cpu'
 corpus = (
     "hanwa ai adalah model bahasa otonom tingkat lanjut yang mengimplementasikan arsitektur transformer modern. "
     "rotary positional embeddings atau rope memungkinkan representasi posisi relatif yang superior pada inferensi teks panjang. "
-    "swiglu activation function menggantikan relu tradisional untuk meningkatkan kapasitas non-linier jaringan syaraf tiruan. "
-    "dalam pelatihan deep learning, optimizer adamw dengan weight decay mengoptimalkan regularisasi matriks bobot. "
-    "machine learning, neural networks, backpropagation, dan attention mechanisms adalah fondasi kecerdasan buatan masa depan."
+    "swiglu activation function menggantikan relu tradisional untuk meningkatkan kapasitas non-linier jaringan syaraf tiruan."
 )
 
 chars = sorted(list(set(corpus)))
@@ -30,7 +43,6 @@ char_to_idx = {ch: i for i, ch in enumerate(chars)}
 idx_to_char = {i: ch for i, ch in enumerate(chars)}
 vocab_size = len(chars)
 
-# --- 3. KOMPONEN ARSITEKTUR MUTAKHIR (RoPE & SwiGLU) ---
 def precompute_rope_frequencies(dim, end, theta=10000.0):
     freqs = 1.0 / (theta ** (torch.arange(0, dim, 2).float() / dim))
     t = torch.arange(end, device=DEVICE).type_as(freqs)
@@ -117,48 +129,66 @@ class UltimateNanoGPT(nn.Module):
         return logits
 
 @st.cache_resource
-def load_model():
+def load_local_model():
     m = UltimateNanoGPT().to(DEVICE)
     m.eval()
     return m
 
-model = load_model()
+local_model = load_local_model()
 
-# --- 4. MANAJEMEN RIWAYAT CHAT & ANTARMUKA INTERAKTIF ---
+# --- 4. MANAJEMEN RIWAYAT CHAT & LOGIKA PEMILIHAN MODEL ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Menampilkan riwayat percakapan di layar
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Kolom input chat di bagian bawah (ala ChatGPT/Gemini)
-if prompt := st.chat_input("Ketik pesan atau pancingan ke Hanwa AI..."):
+if prompt := st.chat_input("Ketik pesan Anda di sini..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Proses AI merespons pesan
     with st.chat_message("assistant"):
-        with st.spinner("Hanwa AI sedang mengetik..."):
-            idx = torch.tensor([[char_to_idx.get(c, 0) for c in prompt]], dtype=torch.long, device=DEVICE)
-            
-            with torch.no_grad():
-                for _ in range(100):  # Batas maksimal karakter balasan
-                    idx_cond = idx[:, -BLOCK_SIZE:]
-                    logits = model(idx_cond)
-                    logits = logits[:, -1, :] / 0.6  # Temperature sampling
-                    
-                    top_k = 3
-                    v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                    logits[logits < v[:, [-1]]] = -float('Inf')
-                    
-                    probs = F.softmax(logits, dim=-1)
-                    next_idx = torch.multinomial(probs, num_samples=1)
-                    idx = torch.cat((idx, next_idx), dim=1)
-                    
-            result_text = "".join([idx_to_char[i.item()] for i in idx[0]])
-            st.markdown(result_text)
-            
-    st.session_state.messages.append({"role": "assistant", "content": result_text})
+        if selected_model == "Hanwa AI (Local Model)":
+            with st.spinner("Hanwa AI (Local) sedang memproses teks..."):
+                idx = torch.tensor([[char_to_idx.get(c, 0) for c in prompt]], dtype=torch.long, device=DEVICE)
+                
+                with torch.no_grad():
+                    for _ in range(100):
+                        idx_cond = idx[:, -BLOCK_SIZE:]
+                        logits = local_model(idx_cond)
+                        logits = logits[:, -1, :] / 0.6
+                        
+                        top_k = 3
+                        v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                        logits[logits < v[:, [-1]]] = -float('Inf')
+                        
+                        probs = F.softmax(logits, dim=-1)
+                        next_idx = torch.multinomial(probs, num_samples=1)
+                        idx = torch.cat((idx, next_idx), dim=1)
+                        
+                response_text = "".join([idx_to_char[i.item()] for i in idx[0]])
+                st.markdown(f"🧠 **[Hanwa AI Local]**: {response_text}")
+
+        else:
+            # Bagian koneksi nyata ke Google Gemini API
+            with st.spinner("Menghubungkan ke Gemini API..."):
+                if not api_key_input:
+                    response_text = "⚠️ Harap masukkan Google Gemini API Key Anda di sidebar sebelah kiri."
+                else:
+                    try:
+                        # Menginisialisasi client Google GenAI resmi
+                        client = genai.Client(api_key=api_key_input)
+                        # Memanggil model Gemini Flash terbaru
+                        response = client.models.generate_content(
+                            model='gemini-2.5-flash',
+                            contents=prompt,
+                        )
+                        response_text = f"🌐 **[Gemini API]**: {response.text}"
+                    except Exception as e:
+                        response_text = f"❌ Terjadi kesalahan saat menghubungi API: {e}"
+                
+                st.markdown(response_text)
+                
+    st.session_state.messages.append({"role": "assistant", "content": response_text})
