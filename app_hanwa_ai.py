@@ -3,7 +3,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import os
+from dotenv import load_dotenv
 from google import genai
+
+# Memuat file .env jika dijalankan secara lokal
+load_dotenv()
 
 # --- 1. KONFIGURASI HALAMAN WEB STREAMLIT ---
 st.set_page_config(page_title="Hanwa AI Hybrid Chat", page_icon="🤖")
@@ -14,12 +19,12 @@ st.write("Sistem chat otonom dengan opsi pemilihan mesin model AI (Local Neural 
 st.sidebar.header("⚙️ Pengaturan Model")
 selected_model = st.sidebar.selectbox(
     "Pilih Mesin AI:",
-    ["Hanwa AI (Local Model)", "API Eksternal (Gemini AI)"]
+    ["Hanwa AI (Local Model)", "API Eksternal (Gemini API)"]
 )
 
 st.sidebar.markdown("---")
-if selected_model == "API Eksternal (Gemini AI)":
-    st.sidebar.success("API Key Gemini sudah tertanam otomatis di dalam sistem.")
+if selected_model == "API Eksternal (Gemini API)":
+    st.sidebar.success("API Key Gemini terhubung secara aman melalui Environment Variables.")
 else:
     st.sidebar.success("Menggunakan model neural network buatan sendiri (Hanwa AI PyTorch).")
 
@@ -171,12 +176,12 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
                 st.markdown(f"🧠 **[Hanwa AI Local]**: {response_text}")
 
         else:
-            # Bagian koneksi nyata ke Google Gemini API secara otomatis
+            # Bagian koneksi nyata ke Google Gemini API secara aman via environment variable
             with st.spinner("Menghubungkan ke Gemini API..."):
                 try:
-                    # Menginisialisasi client menggunakan API Key yang langsung tertanam
-                    client = genai.Client(api_key="AQ.Ab8RN6IC_2-p8jSTMmZNN2as216-f8gwwu7wFHrFDsImZZueYw")
-                    # Memanggil model Gemini Flash terbaru
+                    api_key_env = os.environ.get("GEMINI_API_KEY")
+                    client = genai.Client(api_key=api_key_env)
+                    
                     response = client.models.generate_content(
                         model='gemini-2.5-flash',
                         contents=prompt,
