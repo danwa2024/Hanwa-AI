@@ -19,7 +19,7 @@ st.write("Hi, what's the move?.")
 st.sidebar.header("⚙️ Pengaturan Model")
 selected_model = st.sidebar.selectbox(
     "Pilih Mesin AI:",
-    ["Hanwa AI (Local Model)", "API Eksternal (Groq API)"]
+    ["Raya 1.0", "Asa 1.0"]
 )
 
 st.sidebar.markdown("---")
