@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import math
 import os
 from dotenv import load_dotenv
-from google import genai
+from groq import Groq
 
 # Memuat file .env jika dijalankan secara lokal
 load_dotenv()
@@ -13,18 +13,18 @@ load_dotenv()
 # --- 1. KONFIGURASI HALAMAN WEB STREAMLIT ---
 st.set_page_config(page_title="Hanwa AI Hybrid Chat", page_icon="🤖")
 st.title("🤖 Hanwa AI - Hybrid System")
-st.write("Sistem chat otonom dengan opsi pemilihan mesin model AI (Local Neural Network vs Google Gemini API).")
+st.write("Sistem chat otonom dengan opsi pemilihan mesin model AI (Local Neural Network vs Groq API).")
 
 # --- 2. SIDEBAR: PENGATURAN & PEMILIHAN MODEL ---
 st.sidebar.header("⚙️ Pengaturan Model")
 selected_model = st.sidebar.selectbox(
     "Pilih Mesin AI:",
-    ["Hanwa AI (Local Model)", "API Eksternal (Gemini API)"]
+    ["Hanwa AI (Local Model)", "API Eksternal (Groq API)"]
 )
 
 st.sidebar.markdown("---")
-if selected_model == "API Eksternal (Gemini API)":
-    st.sidebar.success("API Key Gemini terhubung secara aman melalui Secrets/Environment.")
+if selected_model == "API Eksternal (Groq API)":
+    st.sidebar.success("API Key Groq terhubung secara aman melalui Secrets/Environment.")
 else:
     st.sidebar.success("Menggunakan model neural network buatan sendiri (Hanwa AI PyTorch).")
 
@@ -82,7 +82,7 @@ class UltimateCausalAttention(nn.Module):
         self.v_proj = nn.Linear(EMBED_DIM, EMBED_DIM, bias=False)
         self.out_proj = nn.Linear(EMBED_DIM, EMBED_DIM, bias=False)
         self.register_buffer(
-            "bias", 
+            "bias",
             torch.tril(torch.ones(BLOCK_SIZE, BLOCK_SIZE)).view(1, 1, BLOCK_SIZE, BLOCK_SIZE)
         )
         self.freqs_cis = precompute_rope_frequencies(self.head_dim, BLOCK_SIZE)
@@ -98,7 +98,7 @@ class UltimateCausalAttention(nn.Module):
         att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
         att = att.masked_fill(self.bias[:, :, :T, :T] == 0, float('-inf'))
         att = F.softmax(att, dim=-1)
-        
+
         y = att @ v
         y = y.transpose(1, 2).contiguous().view(B, T, C)
         return self.out_proj(y)
@@ -157,44 +157,50 @@ if prompt := st.chat_input("Ketik pesan Anda di sini..."):
         if selected_model == "Hanwa AI (Local Model)":
             with st.spinner("Hanwa AI (Local) sedang memproses teks..."):
                 idx = torch.tensor([[char_to_idx.get(c, 0) for c in prompt]], dtype=torch.long, device=DEVICE)
-                
+
                 with torch.no_grad():
                     for _ in range(100):
                         idx_cond = idx[:, -BLOCK_SIZE:]
                         logits = local_model(idx_cond)
                         logits = logits[:, -1, :] / 0.6
-                        
+
                         top_k = 3
                         v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
                         logits[logits < v[:, [-1]]] = -float('Inf')
-                        
+
                         probs = F.softmax(logits, dim=-1)
                         next_idx = torch.multinomial(probs, num_samples=1)
                         idx = torch.cat((idx, next_idx), dim=1)
-                        
+
                 response_text = "".join([idx_to_char[i.item()] for i in idx[0]])
                 st.markdown(f"🧠 **[Hanwa AI Local]**: {response_text}")
 
         else:
-            # Bagian koneksi aman ke Google Gemini API (Streamlit Secrets / Environment Variable)
-            with st.spinner("Menghubungkan ke Gemini API..."):
+            # Bagian koneksi ke Groq API (Streamlit Secrets / Environment Variable)
+            with st.spinner("Menghubungkan ke Groq API..."):
                 try:
                     # Mencoba mengambil kunci dari Streamlit Secrets atau Environment Variable (.env)
                     try:
-                        api_key = st.secrets["GEMINI_API_KEY"]
+                        api_key = st.secrets["GROQ_API_KEY"]
                     except Exception:
-                        api_key = os.environ.get("GEMINI_API_KEY")
+                        api_key = os.environ.get("GROQ_API_KEY")
 
-                    client = genai.Client(api_key=api_key)
-                    
-                    response = client.models.generate_content(
-                        model='gemini-1.5-flash',  # Diperbarui ke model yang valid
-                        contents=prompt,
+                    if not api_key:
+                        raise ValueError("GROQ_API_KEY tidak ditemukan. Cek file .env atau Streamlit Secrets.")
+
+                    client = Groq(api_key=api_key)
+
+                    completion = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",  # Model gratis Groq, cepat & kuat
+                        messages=[
+                            {"role": "user", "content": prompt}
+                        ],
                     )
-                    response_text = f"🌐 **[Gemini API]**: {response.text}"
+                    reply = completion.choices[0].message.content
+                    response_text = f"🌐 **[Groq API]**: {reply}"
                 except Exception as e:
                     response_text = f"❌ Terjadi kesalahan saat menghubungi API: {e}"
-                
+
                 st.markdown(response_text)
-                
+
     st.session_state.messages.append({"role": "assistant", "content": response_text})
